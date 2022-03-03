@@ -1,5 +1,5 @@
 module bit
-using HTTP, LibPQ, JSON, DataFrames
+using HTTP, LibPQ, JSON, DataFrames, SQLStrings, JSONTables
 
 # load preferences module
 @static if VERSION >= v"1.6"
@@ -41,6 +41,29 @@ function download_table(username, schema, tablename; pg_string=missing)
         execute(conn, """SELECT * FROM "$username/$schema"."$tablename";""")
 	end
 	return DataFrame(t)
+end
+
+"""Given a DataFrame, imports the DataFrame to the Database
+   table/schema defined by the username, tablename, schema fields"""
+function import!(df, username, schema, tablename; bitio_key=missing)
+    if ismissing(bitio_key)
+        bitio_key = @load_preference("bitio_key", missing)
+        if ismissing(bitio_key)
+            throw(ErrorException("Please include your API key or install your pg_string with the install_key! method"))
+        end
+    end
+
+    url = "https://api.bit.io/api/v1beta/import/json/"
+    payload = Dict("create_table_if_not_exists" => true,
+		"table_name" => tablename,
+		"repo_name" => schema,
+		"data" => arraytable(df))
+	headers = Dict(
+	    "Accept" => "application/json",
+	    "Content-Type"=> "application/json",
+	    "Authorization"=> "Bearer $bitio_key"
+	)
+	HTTP.post(url, headers, json(payload))
 end
 
 end #module
