@@ -1,5 +1,4 @@
 module BitHelper
-
-greet() = print("Hello World!")
-
+include("bit.jl")
+export bit
 end # module
