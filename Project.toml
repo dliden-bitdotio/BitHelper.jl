@@ -1,0 +1,4 @@
+name = "BitHelper"
+uuid = "36378a9f-d36f-4c83-ac3c-f8cf381ac077"
+authors = ["Daniel Liden"]
+version = "0.1.0"
