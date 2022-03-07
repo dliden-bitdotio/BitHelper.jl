@@ -37,6 +37,6 @@ DataFrame ...
 ### Import Table
 
 ```julia-repl
-bit.import!(mydf, myusername, myschema, mytablename, if_exists="truncate")
+julia> bit.import!(mydf, myusername, myschema, mytablename, if_exists="truncate")
 HTTP.Messages.Response:
 ...
