@@ -32,7 +32,14 @@ function install_key!(bitio_pg_string::AbstractString)
     end
 
     # extract password from pg_string
-    pw = match(r":(.*):(.*)@", bitio_pg_string)[2]
+    info = LibPQ.conninfo(bitio_pg_string)
+    for option in info
+        if option.keyword=="password"
+           global pw = option.val
+        end
+    end
+
+    #pw = match(r":(.*):(.*)@", bitio_pg_string)[2]
 
     # set preferences
     @set_preferences!("bitio_pg_string" => bitio_pg_string,
