@@ -155,19 +155,19 @@ function import!(df::DataFrame, username, schema, tablename; bitio_key = missing
             throw(ErrorException("if_exists must be one of 'append', 'truncate', or 'replace'"))
         end
     end
-    
 
-    url = "https://api.bit.io/api/v1beta/import/json/"
-    payload = Dict("create_table_if_not_exists" => create_table_if_not_exists,
-        "table_name" => tablename,
-        "repo_name" => schema,
-        "data" => arraytable(df))
+    io = IOBuffer()
+    CSV.write(io, df)
+    
     headers = Dict(
-        "Accept" => "application/json",
-        "Content-Type" => "application/json",
-        "Authorization" => "Bearer $bitio_key"
+        "Content-Disposition" => "attachment;filename='test.csv'",
+        "Authorization" => "Bearer $(bitio_key)"
     )
-    HTTP.post(url, headers, json(payload))
+
+    url_string = "https://import.bit.io/$(escapeuri(username))/$(escapeuri(schema))/$(escapeuri(tablename))"
+    uri = URI(url_string)
+    HTTP.request("POST", uri, headers, String(take!(io)))
+    
 end
 
 """Import method for CSV files"""
