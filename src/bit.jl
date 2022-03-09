@@ -1,5 +1,5 @@
 module bit
-using HTTP, LibPQ, JSON, DataFrames, SQLStrings, JSONTables
+using HTTP, LibPQ, JSON, DataFrames, SQLStrings, JSONTables, CSV, URIs
 
 # load preferences module
 @static if VERSION >= v"1.6"
@@ -120,7 +120,7 @@ HTTP.Messages.Response:
 ```
 
 """
-function import!(df, username, schema, tablename; bitio_key = missing,
+function import!(df::DataFrame, username, schema, tablename; bitio_key = missing,
     create_table_if_not_exists = true, if_exists = "append")
     if ismissing(bitio_key)
         bitio_key = @load_preference("bitio_key", missing)
@@ -161,6 +161,48 @@ function import!(df, username, schema, tablename; bitio_key = missing,
         "Authorization" => "Bearer $bitio_key"
     )
     HTTP.post(url, headers, json(payload))
+end
+
+"""Import method for CSV files"""
+function import!(file::String, username, schema, tablename; bitio_key = missing,
+    create_table_if_not_exists = true, if_exists = "append")
+    if ismissing(bitio_key)
+        bitio_key = @load_preference("bitio_key", missing)
+        if ismissing(bitio_key)
+            throw(ErrorException("Please include your API key or install your pg_string with the install_key! method"))
+        end
+    end
+
+    exists = query!("""SELECT EXISTS
+(
+    SELECT 1
+    FROM information_schema.tables 
+    WHERE table_schema = '$username/$schema'
+    AND table_name = '$tablename'
+);"""
+    )
+    exists = DataFrame(exists)[1, 1]
+
+    if exists
+        if if_exists == "truncate"
+            query!("""TRUNCATE "$username/$schema"."$tablename";""")
+        elseif if_exists == "replace"
+            query!("""DROP TABLE "$username/$schema"."$tablename";""")
+        elseif if_exists != "append"
+            throw(ErrorException("if_exists must be one of 'append', 'truncate', or 'replace'"))
+        end
+    end
+
+
+    headers = Dict(
+        "Content-Disposition" => "attachment;filename='test.csv'",
+        "Authorization" => "Bearer $(bitio_key)"
+    )
+
+    url_string = "https://import.bit.io/$(escapeuri(username))/$(escapeuri(schema))/$(escapeuri(tablename))"
+    uri = URI(url_string)
+
+    HTTP.request("POST", uri, headers, read(file, String))
 end
 
 end #module
